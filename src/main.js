@@ -14,10 +14,19 @@ import router from './router'
 const vuetify = createVuetify({
   components,
   directives,
+  defaults: {
+    VBtn: {
+      variant: 'tonal',
+      color: 'primary',
+      rounded: 'lg',
+      density: 'comfortable',
+      elevation: 0,
+      class: 'text-none',
+    },
+  },
 })
 
 createApp(App)
   .use(vuetify)
   .use(router)
   .mount('#app')
-``

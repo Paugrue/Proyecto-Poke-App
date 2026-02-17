@@ -1,11 +1,10 @@
 <script setup>
 import { ref, onMounted, computed } from "vue"
-
-const url = "https://hp-api.onrender.com/api/characters/students"
+import { getStudents } from "@/services/hpService"
 
 const characters = ref([])
 const search = ref("")
-const selectedHouse = ref("")   // 🏠 Nueva: casa seleccionada
+const selectedHouse = ref("")
 const loading = ref(false)
 
 const headers = [
@@ -13,6 +12,7 @@ const headers = [
   { title: "Casa", key: "house" },
   { title: "Actor", key: "actor" },
   { title: "Especie", key: "species" },
+  { title: "Detalles", key: "details", sortable: false }
 ]
 
 const houseColors = {
@@ -22,7 +22,7 @@ const houseColors = {
   Hufflepuff: "amber-darken-2",
 }
 
-// 🏰 Casas únicas de los personajes
+// Casas únicas de los personajes (para el select)
 const houses = computed(() => {
   const unique = [...new Set(characters.value.map(c => c.house).filter(Boolean))]
   return unique
@@ -30,15 +30,19 @@ const houses = computed(() => {
 
 async function loadCharacters() {
   loading.value = true
-  const res = await fetch(url)
-  characters.value = await res.json()
-  loading.value = false
+  try {
+    const data = await getStudents()
+    characters.value = data
+  } finally {
+    loading.value = false
+  }
 }
 
-// 🔍 Computed: Filtrado por búsqueda + casa
+// Filtrado por búsqueda + casa
 const filteredCharacters = computed(() => {
   return characters.value.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(search.value.toLowerCase())
+    const name = c.name?.toLowerCase() || ""
+    const matchesSearch = name.includes(search.value.toLowerCase())
     const matchesHouse = selectedHouse.value ? c.house === selectedHouse.value : true
     return matchesSearch && matchesHouse
   })
@@ -49,58 +53,65 @@ onMounted(loadCharacters)
 
 <template>
   <v-container class="py-8">
-
     <div class="text-center mb-6">
       <h1 class="text-h4 font-weight-bold">
         Estudiantes de Hogwarts
       </h1>
       <p class="text-medium-emphasis">
-        Explora los personajes del mundo mágico
+        Explora los personajes de Hogwarts
       </p>
     </div>
 
     <!-- FILTROS -->
-<v-row class="mb-4" dense>
-  <v-col cols="12" sm="6">
-    <v-text-field
-      v-model="search"
-      label="Buscar personaje..."
-      prepend-inner-icon="mdi-magnify"
-      variant="outlined"
-      hide-details
-      clearable
-      class="filter-field"
-    />
-  </v-col>
+    <v-row class="mb-4" dense>
+      <v-col cols="12" sm="6">
+        <v-text-field
+          v-model="search"
+          label="Buscar personaje..."
+          prepend-inner-icon="mdi-magnify"
+          variant="outlined"
+          hide-details
+          clearable
+          class="filter-field"
+        />
+      </v-col>
 
-  <v-col cols="12" sm="6">
-    <v-select
-      v-model="selectedHouse"
-      :items="houses"
-      label="Filtrar por casa"
-      clearable
-      variant="outlined"
-      class="filter-field"
-    />
-  </v-col>
-</v-row>
+      <v-col cols="12" sm="6">
+        <v-select
+          v-model="selectedHouse"
+          :items="houses"
+          label="Filtrar por casa"
+          clearable
+          variant="outlined"
+          class="filter-field"
+        />
+      </v-col>
+    </v-row>
 
     <!-- TABLA -->
     <v-data-table
       :headers="headers"
       :items="filteredCharacters"
       :loading="loading"
-      item-key="name"
+      item-key="id"
       class="rounded-xl elevation-4"
     >
+      <!-- Botón de detalles -->
+      <template #item.details="{ item }">
+        <v-btn
+          color="primary"
+          size="small"
+          :to="`/characters/${item.id}`"
+        >
+          Ver más
+        </v-btn>
+      </template>
 
+      <!-- Columna Personaje (avatar + nombre + especie) -->
       <template #item.name="{ item }">
         <div class="d-flex align-center ga-3">
           <v-avatar size="56">
-            <v-img
-              :src="item.image"
-              cover
-            />
+            <v-img :src="item.image" cover />
           </v-avatar>
           <div>
             <div class="font-weight-bold">
@@ -113,6 +124,7 @@ onMounted(loadCharacters)
         </div>
       </template>
 
+      <!-- Chip con casa -->
       <template #item.house="{ item }">
         <v-chip
           v-if="item.house"
@@ -130,9 +142,7 @@ onMounted(loadCharacters)
           {{ item.actor || "Desconocido" }}
         </span>
       </template>
-
     </v-data-table>
-
   </v-container>
 </template>
 
@@ -142,14 +152,12 @@ onMounted(loadCharacters)
 }
 
 .filter-field .v-field {
-  min-height: 56px;       
+  min-height: 56px;
   display: flex;
-  align-items: center;    
+  align-items: center;
 }
-
-
 .filter-field .v-field__prepend-inner,
 .filter-field .v-field__append-inner {
-  margin-top: 0;         
+  margin-top: 0;
 }
 </style>
