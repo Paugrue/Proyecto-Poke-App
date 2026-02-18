@@ -1,11 +1,34 @@
 <script setup>
-import { ref, onMounted, computed } from "vue"
+import { ref, onMounted, computed, watch } from "vue"
 import { getStudents } from "@/services/hpService"
 
 const characters = ref([])
 const search = ref("")
 const selectedHouse = ref("")
 const loading = ref(false)
+
+import { useRoute, useRouter } from "vue-router"
+
+const route = useRoute()
+const router = useRouter()
+
+onMounted(() => {
+  if (typeof route.query.q === "string") search.value = route.query.q
+  if (typeof route.query.house === "string") selectedHouse.value = route.query.house
+})
+
+watch([search, selectedHouse], ([q, house]) => {
+  router.replace({
+    query: {
+      ...(q ? { q } : {}),
+      ...(house ? { house } : {})
+    }
+  })
+})
+
+function onClearSearch() { search.value = "" }
+function onHouseChange() {}
+function onClearHouse() { selectedHouse.value = "" }
 
 const headers = [
   { title: "Personaje", key: "name" },
@@ -70,9 +93,10 @@ onMounted(loadCharacters)
           label="Buscar personaje..."
           prepend-inner-icon="mdi-magnify"
           variant="outlined"
-          hide-details
           clearable
+          hide-details
           class="filter-field"
+          @click:clear="onClearSearch"
         />
       </v-col>
 
@@ -81,9 +105,11 @@ onMounted(loadCharacters)
           v-model="selectedHouse"
           :items="houses"
           label="Filtrar por casa"
-          clearable
           variant="outlined"
+          clearable
           class="filter-field"
+          @update:modelValue="onHouseChange"
+          @click:clear="onClearHouse"
         />
       </v-col>
     </v-row>
@@ -101,8 +127,9 @@ onMounted(loadCharacters)
         <v-btn
           color="primary"
           size="small"
-          :to="`/characters/${item.id}`"
-        >
+          :to="{ name: 'character', params: { id: item.id }, query: route.query }"
+          >
+
           Ver más
         </v-btn>
       </template>
